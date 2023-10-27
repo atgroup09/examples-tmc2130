@@ -23,7 +23,7 @@ tmc2130-arduino-uno
 
 ## Arduino Uno
 
-![arduino uno](./000-images/arduino-uno.png)
+![arduino uno](../000-images/arduino-uno.png)
 
 ### Hardware Platform
 
