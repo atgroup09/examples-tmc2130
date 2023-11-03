@@ -237,51 +237,54 @@ void TMC2130_StepGen_TaskToggle(int LogIn)
  */
 void TMC2130_DiagPrint(void)
 {
-  Serial.print("============\r\n");
-  Serial.print("GCONF\r\n");
-  Serial.print("SHAFT:");
+  Serial.print("================\r\n");
+  Serial.print("GCONF");
+  Serial.print(".SHAFT:");
   Serial.print(TMC2130.shaft(), DEC);
   Serial.print("\r\n");
   
-  Serial.print("--------\r\n");
-  Serial.print("GSTAT\r\n");
-  Serial.print("RST:");
+  Serial.print("GSTAT");
+  Serial.print(".RST:");
   Serial.print(TMC2130.reset(), DEC);
-  Serial.print(" ERR:");
+  Serial.print(" .ERR:");
   Serial.print(TMC2130.drv_err(), DEC);
-  Serial.print(" UV:");
+  Serial.print(" .UV:");
   Serial.print(TMC2130.uv_cp(), DEC);
   Serial.print("\r\n");
+
+  Serial.print("DRV_STATUS");
+  Serial.print(".STST:");
+  Serial.print(TMC2130.stst(), DEC);
+  Serial.print(" .OTPW:");
+  Serial.print(TMC2130.otpw(), DEC);
+  Serial.print(" .STALL:");
+  Serial.print(TMC2130.stallguard(), DEC);
+  Serial.print(" .SG_RES:");
+  Serial.print(TMC2130.sg_result(), DEC);
+  Serial.print("\r\n");
   
-  Serial.print("--------\r\n");
-  Serial.print("IOIN\r\n");
-  Serial.print("STEP:");
+  Serial.print("IOIN");
+  Serial.print(".STEP:");
   Serial.print(TMC2130.step(), DEC);
-  Serial.print(" DIR:");
+  Serial.print(" .DIR:");
   Serial.print(TMC2130.dir(), DEC);
-  Serial.print(" CFG4:");
+  Serial.print(" .CFG4:");
   Serial.print(TMC2130.dcen_cfg4(), DEC);
-  Serial.print(" CFG5:");
+  Serial.print(" .CFG5:");
   Serial.print(TMC2130.dcin_cfg5(), DEC);
-  Serial.print(" CFG6:");
+  Serial.print(" .CFG6:");
   Serial.print(TMC2130.drv_enn_cfg6(), DEC);
-  Serial.print(" DCO:");
+  Serial.print(" .DCO:");
   Serial.print(TMC2130.dco(), DEC);
-  Serial.print(" VER:");
-  Serial.print(TMC2130.version(), DEC);
   Serial.print("\r\n");
 
-  Serial.print("--------\r\n");
   Serial.print("LOST_STEPS:");
   Serial.println(TMC2130.LOST_STEPS(), DEC);
 
-  Serial.print("--------\r\n");
   Serial.print("CUR.A:");
   Serial.println(TMC2130.cur_a(), DEC);
-  Serial.print("--------\r\n");
   Serial.print("CUR.B:");
   Serial.println(TMC2130.cur_b(), DEC);
-  Serial.print("--------\r\n");
   Serial.print("VDCMIN:");
   Serial.println(TMC2130.VDCMIN(), DEC);
   
@@ -334,10 +337,24 @@ void TMC2130_ConfigInit(int LogIn)
 
   TMC2130_DriverOff();
   delay(5);
-  
+
+  //TMC2130.push();
+  //TMC2130.toff(3);
+  //TMC2130.tbl(1);
+  //TMC2130.hysteresis_start(4);
+  //TMC2130.hysteresis_end(-2);
   TMC2130.rms_current(200);
-  TMC2130.stealthChop(1);
-  TMC2130.VDCMIN(8);
+  //TMC2130.microsteps(16);
+  //TMC2130.diag1_stall(1);
+  //TMC2130.diag1_active_high(1);
+  //TMC2130.coolstep_min_speed(0xF);
+  TMC2130.THIGH(0);
+  TMC2130.semin(5);
+  TMC2130.semax(2);
+  TMC2130.sedn(0b01);
+  TMC2130.sg_stall_value(0);
+  //TMC2130.stealthChop(1);
+  TMC2130.VDCMIN(1);
   TMC2130_DirSet();
 
   TMC2130_DriverOn();
