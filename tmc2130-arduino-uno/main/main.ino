@@ -4,8 +4,17 @@
  *       Step motor driver BigTreeTech TMC2130 v3.0
  */
 
-#include <TMC2130Stepper.h>
 #include <arduino-timer.h>
+
+
+/* @def Library version
+*/
+#define TMC2130_STEPPER_NEW   1 //new TMCStepper
+#define TMC2130_STEPPER_OLD   2 //old TMC2130Stepper
+
+/* @def Used Library
+*/
+#define TMC2130_STEPPER       TMC2130_STEPPER_NEW
 
 
 /* @def GPIO map
@@ -19,6 +28,11 @@
 #define TMC2130_MOSI_PIN  11  //      (SPI MOSI - TMC.DataIn)
 #define TMC2130_EN_PIN    8   // EN   (Enable)
 
+#define TMC2130_R_SENSE   0.11f // Match to your driver
+                                // SilentStepStick series use 0.11
+                                // UltiMachine Einsy and Archim2 boards use 0.2
+                                // Panucatt BSD2660 uses 0.1
+                                // Watterott TMC5160 uses 0.075
 
 /* @def STEP pulse task types
 */
@@ -58,10 +72,16 @@ void *TIMER1_StepGen_TaskID;
 bool TIMER1_DiagMon_TaskState = false;
 bool TIMER1_StepGen_TaskState = false;
 
-
 /* @var TMC2130-instance (uninitialized)
 */
+#if (TMC2130_STEPPER == TMC2130_STEPPER_NEW)
+#include <TMCStepper.h>
+TMC2130Stepper TMC2130 = TMC2130Stepper(TMC2130_CS_PIN, TMC2130_R_SENSE);
+#else
+#include <TMC2130Stepper.h>
 TMC2130Stepper TMC2130 = TMC2130Stepper(TMC2130_EN_PIN, TMC2130_DIR_PIN, TMC2130_STEP_PIN, TMC2130_CS_PIN);
+#endif
+
 
 /* @var TMC2130.EN: current value
 */
@@ -74,6 +94,11 @@ bool TMC2130_Step = false;
 /* @var TMC2130.SHAFT: current value (rotate direction)
 */
 bool TMC2130_Dir = false;
+
+
+/* @var Config ID
+*/
+int TMC2130_Cfg = 2;
 
 
 /* @var UART Menu command
@@ -134,7 +159,11 @@ void TMC2130_EnToggle(int LogIn)
  */
 void TMC2130_DirSet(void)
 {
+#if (TMC2130_STEPPER == TMC2130_STEPPER_NEW)
+  TMC2130.shaft(TMC2130_Dir);
+#else
   TMC2130.shaft_dir(TMC2130_Dir);
+#endif
 }
 
 /** @brief  DIR toggle.
@@ -269,6 +298,10 @@ void TMC2130_StepGen_TaskToggle(int LogIn)
 void TMC2130_DiagPrint(void)
 {
   Serial.print("================\r\n");
+
+  Serial.print("CONFIG ID   ");
+  Serial.print(TMC2130_Cfg, DEC);
+  Serial.print("\r\n");
   
   Serial.print("GCONF       ");
   Serial.print(TMC2130.GCONF(), DEC);
@@ -276,6 +309,10 @@ void TMC2130_DiagPrint(void)
 
   Serial.print("DCTRL       ");
   Serial.print(TMC2130.DCCTRL(), DEC);
+  Serial.print(" DC_TIME:");
+  Serial.print(TMC2130.dc_time(), DEC);
+  Serial.print(" DC_SG:");
+  Serial.print(TMC2130.dc_sg(), DEC);
   Serial.print("\r\n");
 
   Serial.print("DRV_STATUS  ");
@@ -378,7 +415,7 @@ void TMC2130_DiagMon_TaskToggle(int LogIn)
   }
 }
 
-#define STALL_VALUE 0
+#define STALL_VALUE 100
 
 /** @brief  Init. config.
  *  @param  LogIn - debug-log:
@@ -393,92 +430,143 @@ void TMC2130_ConfigInit(int LogIn)
   TMC2130_DriverOff();
   delay(5);
 
-/*
-  TMC2130.toff(8);
-  TMC2130.vhighfs(1);
-  TMC2130.vhighchm(1);
-  TMC2130.VDCMIN(2);
-  TMC2130.tbl(1);
-  TMC2130.dctime(25);
-  TMC2130.dcsg(1);
-
-  TMC2130.hysteresis_start(4);
-  TMC2130.hysteresis_end(-2);
-  TMC2130.microsteps(16);
-  
-  TMC2130.TPOWERDOWN(250);
-  TMC2130.TPWMTHRS(1048575);
-  TMC2130.THIGH(0);
-  TMC2130.coolstep_min_speed(0xFFFFF);
-  TMC2130.semin(5);
-  TMC2130.semax(2);
-  TMC2130.sedn(0b01);
-  TMC2130.sg_stall_value(0);
-
-  TMC2130.diag1_stall(1);
-  TMC2130.diag1_active_high(1);
-  TMC2130.diag1_steps_skipped(1);  
-
-  TMC2130.hstrt(4);
-  TMC2130.hend(1);
-  TMC2130.chm(0);
-
-  TMC2130.ihold(2);
-  TMC2130.irun(3);
-  TMC2130.iholddelay(1);
-
-  TMC2130.en_pwm_mode(1);
-  TMC2130.pwm_autoscale(1);
-  TMC2130.pwm_freq(0);
-  TMC2130.pwm_ampl(200);
-  TMC2130.pwm_grad(1);
-*/
-
-  TMC2130.push();
-  TMC2130.toff(3);
-  TMC2130.tbl(1);
-  TMC2130.hysteresis_start(4);
-  TMC2130.hysteresis_end(-2);
-  TMC2130.rms_current(200); // mA
-  TMC2130.microsteps(128);
-  TMC2130.diag1_stall(1);
-  TMC2130.diag1_active_high(1);
-  TMC2130.coolstep_min_speed(0xFFFFF);
-  TMC2130.THIGH(0);
-  TMC2130.semin(5);
-  TMC2130.semax(2);
-  TMC2130.sedn(0b01);
-  TMC2130.sg_stall_value(STALL_VALUE);
-
-/*
   TMC2130.push();
   TMC2130.vhighfs(1);
   TMC2130.vhighchm(1);
   TMC2130.toff(3);
   TMC2130.VDCMIN(1);
   TMC2130.tbl(1);
-  TMC2130.dctime(25);
-  TMC2130.dcsg(2);
+  TMC2130.dc_time(25);
+  TMC2130.dc_sg(2);
   TMC2130.diag1_steps_skipped(1);
-  //TMC2130.TCOOLTHRS(1);
+  TMC2130.TCOOLTHRS(1);
+
+/*  
+  TMC2130.toff(4);
+  TMC2130.blank_time(24);
+  TMC2130.rms_current(200); // mA
+  TMC2130.microsteps(256);
+  TMC2130.sfilt(true);
+  TMC2130.semin(5);
+  TMC2130.semax(2);
+  TMC2130.sedn(0b01);
+  TMC2130.sgt(STALL_VALUE);
+  TMC2130.diag1_steps_skipped(1);
 */
+
+/*
+  TMC2130.push();
+  TMC2130.toff(3);
+  TMC2130.tbl(1);
+  TMC2130.TPOWERDOWN(255);
+  TMC2130.hstrt(0);
+  TMC2130.hend(2);
+  TMC2130.en_pwm_mode(true);
+  TMC2130.pwm_freq(1);
+  TMC2130.pwm_autoscale(true);
+  TMC2130.pwm_ampl(180);
+  TMC2130.pwm_grad(1);
+  TMC2130.rms_current(200); // mA
+  TMC2130.microsteps(256);
+  TMC2130.diag1_stall(1);
+  TMC2130.diag1_pushpull(1);
+*/
+
+/*
+  if(TMC2130_Cfg == 0)
+  {
+    TMC2130.push();
+    TMC2130.toff(8);
+    TMC2130.vhighfs(1);
+    TMC2130.vhighchm(1);
+    TMC2130.VDCMIN(1);
+    TMC2130.tbl(1);
+    TMC2130.dctime(25);
+    TMC2130.dcsg(1);
   
-  //TMC2130.toff(3);
-  //TMC2130.tbl(1);
-  //TMC2130.hysteresis_start(4);
-  //TMC2130.hysteresis_end(-2);
-  //TMC2130.rms_current(200);
-  //TMC2130.microsteps(1);
-  //TMC2130.diag1_stall(1);
-  //TMC2130.diag1_active_high(1);
-  //TMC2130.coolstep_min_speed(0x1);
-  //TMC2130.THIGH(0);
-  //TMC2130.semin(5);
-  //TMC2130.semax(2);
-  //TMC2130.sedn(0b01);
-  //TMC2130.sg_stall_value(0);
-  //TMC2130.stealthChop(1);
-  //TMC2130.VDCMIN(1);
+    TMC2130.hysteresis_start(4);
+    TMC2130.hysteresis_end(-2);
+    TMC2130.microsteps(256);
+    
+    TMC2130.TPOWERDOWN(250);
+    TMC2130.TPWMTHRS(1048575);
+    TMC2130.THIGH(0);
+    TMC2130.coolstep_min_speed(0xFFFFF);
+    TMC2130.semin(5);
+    TMC2130.semax(2);
+    TMC2130.sedn(0b01);
+    TMC2130.sg_stall_value(0);
+  
+    TMC2130.diag1_stall(1);
+    TMC2130.diag1_active_high(1);
+    TMC2130.diag1_steps_skipped(1);  
+  
+    TMC2130.hstrt(4);
+    TMC2130.hend(1);
+    TMC2130.chm(0);
+  
+    TMC2130.ihold(2);
+    TMC2130.irun(3);
+    TMC2130.iholddelay(1);
+  
+    TMC2130.en_pwm_mode(1);
+    TMC2130.pwm_autoscale(1);
+    TMC2130.pwm_freq(0);
+    TMC2130.pwm_ampl(200);
+    TMC2130.pwm_grad(1);
+  }
+  else if(TMC2130_Cfg == 1)
+  {
+    TMC2130.push();
+    TMC2130.toff(3);
+    TMC2130.tbl(1);
+    TMC2130.hysteresis_start(4);
+    TMC2130.hysteresis_end(-2);
+    TMC2130.rms_current(200); // mA
+    TMC2130.microsteps(128);
+    TMC2130.diag1_stall(1);
+    TMC2130.diag1_active_high(1);
+    TMC2130.coolstep_min_speed(0xFFFFF);
+    TMC2130.THIGH(0);
+    TMC2130.semin(5);
+    TMC2130.semax(2);
+    TMC2130.sedn(0b01);
+    TMC2130.sg_stall_value(STALL_VALUE);
+  }
+  else if(TMC2130_Cfg == 2)
+  {
+    TMC2130.push();
+    TMC2130.vhighfs(1);
+    TMC2130.vhighchm(1);
+    TMC2130.toff(3);
+    TMC2130.VDCMIN(1);
+    TMC2130.tbl(1);
+    TMC2130.dctime(25);
+    TMC2130.dcsg(2);
+    TMC2130.diag1_steps_skipped(1);
+    TMC2130.TCOOLTHRS(1);
+  }
+  else if(TMC2130_Cfg == 3)
+  {
+    TMC2130.push();
+    TMC2130.toff(3);
+    TMC2130.tbl(1);
+    TMC2130.hysteresis_start(4);
+    TMC2130.hysteresis_end(-2);
+    TMC2130.rms_current(200);
+    TMC2130.microsteps(2);
+    TMC2130.diag1_stall(1);
+    TMC2130.diag1_active_high(1);
+    TMC2130.coolstep_min_speed(0x1);
+    TMC2130.THIGH(0);
+    TMC2130.semin(5);
+    TMC2130.semax(2);
+    TMC2130.sedn(0b01);
+    TMC2130.sg_stall_value(0);
+    TMC2130.stealthChop(1);
+    TMC2130.VDCMIN(1);    
+  }
+*/
 
   TMC2130_DirSet();
 
@@ -494,7 +582,8 @@ void UART1_MenuPrint(void)
 {
   Serial.print("\r\n");
   Serial.print("== TMC2130 Example 1 ====\r\n");
-  Serial.print("conf    - stop step task and reinit config\r\n");
+  Serial.print("conf    - stop step task and reinit config (0)\r\n");
+  Serial.print("conf n  - stop step task and reinit config (n=0...3)\r\n");
   Serial.print("en      - enable/disable driver\r\n");
   Serial.print("step    - start/stop step task\r\n");
   Serial.print("dir     - toggle direction\r\n");
@@ -511,6 +600,13 @@ void UART1_MenuPrint(void)
  */
 void setup(void)
 {
+#if (TMC2130_STEPPER == TMC2130_STEPPER_NEW)
+  pinMode(TMC2130_EN_PIN, OUTPUT);
+  pinMode(TMC2130_DIR_PIN, OUTPUT);
+  pinMode(TMC2130_STEP_PIN, OUTPUT);
+  pinMode(TMC2130_CS_PIN, OUTPUT);
+#endif
+  
   //Init. UART (hardware)
   Serial.begin(9600);
   while(!Serial);
@@ -569,6 +665,11 @@ void loop(void)
     {
       TMC2130_ConfigInit(DEBUG_LOG_PRINT);
     }
+    else if(UART1_MenuCmd == "conf")
+    {
+      TMC2130_Cfg = UART1_MenuArg.toInt();
+      TMC2130_ConfigInit(DEBUG_LOG_PRINT);
+    }
     else if(UART1_MenuCmd == "en\n")
     {
       TMC2130_EnToggle(DEBUG_LOG_PRINT);
@@ -576,6 +677,10 @@ void loop(void)
     else if(UART1_MenuCmd == "mstep")
     {
       TMC2130.microsteps(UART1_MenuArg.toInt());
+    }
+    else if(UART1_MenuCmd == "dctime")
+    {
+      TMC2130.dc_time(UART1_MenuArg.toInt());
     }
     else
     {
